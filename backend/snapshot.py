@@ -102,21 +102,42 @@ def looks_broken(payload) -> bool:
 
 def serve(key: str, producer):
     """
-    Live value when it works, the stored copy when it does not.
+    Stored copy first, live only when nothing is stored.
 
-    Never raises on the fallback path: an endpoint that would otherwise 500 is
-    exactly the case this exists for.
+    Inverted deliberately. Trying live first and falling back on failure needs
+    a reliable way to tell a broken response from a thin one, and Garmin's
+    rejected-session reply is not reliably distinguishable: a dead session
+    yields a well-formed payload full of nulls, which no error check catches
+    but which renders an empty dashboard. The agent is the only party that can
+    actually reach Garmin, so what it pushed is the truth; the live path only
+    matters where no snapshot exists yet.
     """
-    try:
-        live = producer()
-    except Exception as e:
-        print(f"{key}: live call raised ({e}) — serving snapshot")
-        live = None
-
-    if not looks_broken(live):
-        return live
-
     cached = get(key)
     if cached is not None:
         return cached
-    return live if live is not None else {"error": f"No live data and no snapshot for {key}."}
+    try:
+        return producer()
+    except Exception as e:
+        print(f"{key}: no snapshot and live call raised ({e})")
+        return {"error": f"No live data and no snapshot for {key}."}
+
+
+def _selfcheck():
+    """serve() prefers the snapshot, and still works with none stored."""
+    import tempfile, pathlib
+    global SNAPSHOT_FILE
+    orig = SNAPSHOT_FILE
+    try:
+        SNAPSHOT_FILE = pathlib.Path(tempfile.mkdtemp()) / "s.json"
+        assert serve("k", lambda: {"v": "live"}) == {"v": "live"}, "live when empty"
+        save({"k": {"v": "cached"}})
+        assert serve("k", lambda: {"v": "live"})["v"] == "cached", "snapshot wins"
+        assert serve("other", lambda: {"v": "live"}) == {"v": "live"}, "unknown key -> live"
+        assert serve("k", lambda: 1 / 0)["v"] == "cached", "snapshot survives a broken producer"
+        print("snapshot selfcheck OK")
+    finally:
+        SNAPSHOT_FILE = orig
+
+
+if __name__ == "__main__":
+    _selfcheck()

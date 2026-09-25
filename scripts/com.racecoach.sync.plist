@@ -10,8 +10,8 @@
        backend, which needs garminconnect/garth/fastapi. -->
   <key>ProgramArguments</key>
   <array>
-    <string>/Users/Cristianon/Downloads/race-coach/backend/venv/bin/python3</string>
-    <string>/Users/Cristianon/Downloads/race-coach/scripts/sync_agent.py</string>
+    <string>/Users/Cristianon/race-coach/backend/venv/bin/python3</string>
+    <string>/Users/Cristianon/race-coach/scripts/sync_agent.py</string>
   </array>
 
   <!-- Every 3 hours. The access token lives a day or two, so this refreshes
@@ -26,7 +26,7 @@
   <true/>
 
   <key>WorkingDirectory</key>
-  <string>/Users/Cristianon/Downloads/race-coach</string>
+  <string>/Users/Cristianon/race-coach</string>
 
   <key>StandardOutPath</key>
   <string>/Users/Cristianon/Library/Logs/race-coach-sync.log</string>
